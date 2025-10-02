@@ -13,18 +13,15 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
+use Illuminate\Support\Facades\Http;
 use App\Services\ApiClient;
 
-Route::get('/test-stats', function(ApiClient $api){
-  return response()->json($api->get('stats')); // harus keluar JSON stats
-});
+// Landing page
+Route::get('/', function () {
+    return view('home');   // jangan pakai ".home"
+})->name('landing');
 
-use Illuminate\Support\Facades\Http;
-
+// Test stats (pilih salah satu, contoh langsung Http)
 Route::get('/test-stats', function () {
     $res = Http::acceptJson()->get(env('API_BASE').'/stats');
     return $res->successful()
@@ -32,9 +29,7 @@ Route::get('/test-stats', function () {
         : response()->json(['ok'=>false,'status'=>$res->status(),'body'=>$res->body()], $res->status());
 });
 
+Route::get('/', fn () => view('home'))->name('landing');
 
-Route::get('/', function () {
-    return view('home');
-})->name('landing');
-
-
+// Pengaduan page
+Route::get('/pengaduan', fn () => view('pengaduan'))->name('pengaduan');
