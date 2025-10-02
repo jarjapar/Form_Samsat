@@ -34,7 +34,7 @@ Route::get('/test-stats', function () {
 
 
 Route::get('/', function () {
-    return view('public.home');
+    return view('home');
 })->name('landing');
 
 
