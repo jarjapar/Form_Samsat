@@ -32,10 +32,10 @@
         $menu = [
           ['label' => 'Beranda',   'route' => 'landing',   'href' => route('landing')],
           ['label' => 'Pengaduan', 'route' => 'pengaduan', 'href' => route('pengaduan')],
-          ['label' => 'Staf',      'route' => null,        'href' => '#staf'],
-          ['label' => 'Berita',    'route' => null,        'href' => '#berita'],
-          ['label' => 'Contact',   'route' => null,        'href' => '#kontak'],
-          ['label' => 'Sop',       'route' => null,        'href' => '#sop'],
+          ['label' => 'Staf', 'route' => 'staf', 'href' => route('staf')],
+          ['label' => 'Berita', 'route' => 'berita', 'href' => route('berita')],
+          ['label' => 'Contact', 'route' => 'contact', 'href' => route('contact')],
+          ['label'=>'Sop','route'=>'sop','href'=>route('sop')],
         ];
         $isActive = fn($item) => $item['route'] ? request()->routeIs($item['route']) : false;
       @endphp

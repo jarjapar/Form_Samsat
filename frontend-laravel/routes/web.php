@@ -33,3 +33,17 @@ Route::get('/', fn () => view('home'))->name('landing');
 
 // Pengaduan page
 Route::get('/pengaduan', fn () => view('pengaduan'))->name('pengaduan');
+
+// ... route lain
+Route::get('/staf', fn () => view('staf'))->name('staf');
+
+Route::get('/berita', fn () => view('berita'))->name('berita');
+
+// Halaman SOP / Video
+Route::get('/sop', fn () => view('sop'))->name('sop');
+
+Route::get('/contact', fn () => view('contact'))->name('contact');
+
+
+
+
