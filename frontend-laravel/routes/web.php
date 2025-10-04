@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -8,42 +9,28 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "web" middleware group. Make something great!
 |
 */
+Route::view('/pengaduan', 'pengaduan')->name('pengaduan');
+Route::view('/staf', 'staf')->name('staf');
+Route::view('/berita', 'berita')->name('berita');
+Route::view('/contact', 'contact')->name('contact');
+Route::view('/sop', 'sop')->name('sop');
 
-use Illuminate\Support\Facades\Http;
-use App\Services\ApiClient;
-
-// Landing page
 Route::get('/', function () {
-    return view('home');   // jangan pakai ".home"
-})->name('landing');
+    return view('home');
+})->name('landing'); 
 
-// Test stats (pilih salah satu, contoh langsung Http)
-Route::get('/test-stats', function () {
-    $res = Http::acceptJson()->get(env('API_BASE').'/stats');
-    return $res->successful()
-        ? $res->json()
-        : response()->json(['ok'=>false,'status'=>$res->status(),'body'=>$res->body()], $res->status());
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::get('/', fn () => view('home'))->name('landing');
-
-// Pengaduan page
-Route::get('/pengaduan', fn () => view('pengaduan'))->name('pengaduan');
-
-// ... route lain
-Route::get('/staf', fn () => view('staf'))->name('staf');
-
-Route::get('/berita', fn () => view('berita'))->name('berita');
-
-// Halaman SOP / Video
-Route::get('/sop', fn () => view('sop'))->name('sop');
-
-Route::get('/contact', fn () => view('contact'))->name('contact');
-
-
-
-
+require __DIR__.'/auth.php';

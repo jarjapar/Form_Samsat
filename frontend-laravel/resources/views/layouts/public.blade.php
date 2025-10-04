@@ -103,7 +103,7 @@
 
   {{-- FOOTER --}}
   <footer class="bg-[#0b5ea8] text-white mt-20">
-    <div class="max-w-[1100px] mx-auto px-4 py-8 grid md:grid-cols-3 gap-8 text-sm">
+    <div class="max-w-[1000px] mx-auto px-4 py-8 grid md:grid-cols-4 gap-8 text-sm">
       <div class="space-y-2">
         <img src="{{ asset('images/logo.png') }}" class="h-8" alt="logo">
         <div class="font-semibold">BAPPENDA NTB</div>
@@ -116,9 +116,11 @@
         <div>samsat_mataram</div>
         <div>(0370) 631230</div>
       </div>
-      <div class="space-y-1">
+      <div class="space-y-3">
         <a class="underline" href="#">E-samsat</a><br>
-        <a class="underline" href="#">Simaskot</a>
+      </div>
+      <div class="space-y-1">
+        <a class="underline" href="#">Simaskot</a><br>
       </div>
     </div>
   </footer>
