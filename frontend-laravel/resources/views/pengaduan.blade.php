@@ -63,7 +63,7 @@
           </div>
         </div>
 
-        {{-- SURVEY (ringkas, 4 pertanyaan, radio) --}}
+        {{-- SURVEY ringkas --}}
         <div class="space-y-5 bg-[#222] rounded-xl p-4 sm:p-5">
           <template x-for="(q,qi) in pertanyaan" :key="qi">
             <div>
@@ -98,23 +98,26 @@
       </form>
     </section>
 
-    {{-- SIDEBAR: PENGADUAN TERBARU --}}
-    <aside class="bg-[#2f2f2f] text-white rounded-2xl p-4 sm:p-5 shadow">
+    {{-- SIDEBAR: PENGADUAN TERBARU (full height, hanya nama & saran) --}}
+    <aside
+      class="bg-[#2f2f2f] text-white rounded-2xl p-4 sm:p-5 shadow
+             lg:sticky lg:top-20 lg:self-start"
+      style="max-height: calc(100vh - 6rem);"
+    >
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-extrabold text-lg">Pengaduan terbaru</h2>
         <button @click="loadLatest()" class="text-sm underline hover:opacity-90">Muat ulang</button>
       </div>
 
-      <div class="space-y-3 max-h-[560px] overflow-auto pr-1">
+      <div class="space-y-3 overflow-auto pr-1" style="max-height: calc(100vh - 8.5rem);">
         <template x-if="latest.length === 0">
           <div class="text-white/70 text-sm">Belum ada data.</div>
         </template>
 
         <template x-for="(p, i) in latest" :key="i">
           <div class="bg-white/10 rounded-xl p-3">
-            <div class="font-semibold text-sm" x-text="p.nama ?? 'nama pengisi'"></div>
-            <div class="text-xs text-white/80" x-text="p.no_hp"></div>
-            <div class="text-xs text-white/70 mt-1 line-clamp-2" x-text="p.alamat"></div>
+            <div class="font-semibold text-sm" x-text="p.nama ?? 'Tanpa nama'"></div>
+            <div class="text-xs text-white/80 mt-1 line-clamp-3" x-text="p.saran ?? '-'"></div>
           </div>
         </template>
       </div>
@@ -145,18 +148,28 @@ function pengaduanPage(API_BASE) {
       jawaban: {0:'',1:'',2:'',3:''},
     },
 
+    // Ambil teks "Saran: ..." dari field alamat
+    takeSaran(alamat) {
+      if (!alamat) return '';
+      const m = alamat.match(/Saran:\s*(.*)$/i);
+      return (m && m[1]) ? m[1].trim() : '';
+    },
+
     async loadLatest() {
       try {
-        const r = await fetch(`${API_BASE}/pengunjung?limit=10`);
+        const r = await fetch(`${API_BASE}/pengunjung?limit=30`);
         const j = await r.json();
-        this.latest = (j.data || []).slice(0, 10);
+        this.latest = (j.data || []).map(row => ({
+          ...row,
+          saran: this.takeSaran(row.alamat || '')
+        }));
       } catch (e) { console.error(e); }
     },
 
     async submit() {
       this.statusMsg = 'Menyimpan...';
 
-      // Gabungkan bidang tambahan + survey jadi satu string untuk 'alamat'
+      // Catat info + survey, letakkan Saran di bagian akhir:
       const catatan =
         `Usia: ${this.form.usia || '-'}; Pendidikan: ${this.form.pendidikan || '-'}; ` +
         `Pekerjaan: ${this.form.pekerjaan || '-'}; ` +
@@ -165,7 +178,7 @@ function pengaduanPage(API_BASE) {
 
       const payload = {
         nama: this.form.nama,
-        alamat: catatan,                  // << disimpan pada kolom 'alamat' di backend
+        alamat: catatan,                  // masih disimpan ke kolom "alamat"
         jenis_kelamin: this.form.jenis_kelamin,
         no_hp: this.form.no_hp,
       };
@@ -179,7 +192,6 @@ function pengaduanPage(API_BASE) {
         const j = await r.json();
         if (r.ok && j.ok) {
           this.statusMsg = 'Tersimpan. Terima kasih atas masukannya!';
-          // reset form
           this.form = {nama:'',no_hp:'',jenis_kelamin:'',usia:'',pendidikan:'',pekerjaan:'',saran:'',jawaban:{0:'',1:'',2:'',3:''}};
           this.loadLatest();
         } else {
