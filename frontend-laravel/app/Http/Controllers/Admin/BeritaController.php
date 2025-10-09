@@ -2,28 +2,26 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Berita;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class BeritaController extends Controller
 {
-    protected string $api;
-
-    public function __construct()
-    {
-        $this->api = rtrim((string) env('API_BASE'), '/');
-    }
-
     public function index(Request $req)
     {
-        $q   = $req->query('q');
-        $res = Http::acceptJson()->timeout(20)
-                ->get("{$this->api}/berita", ['q' => $q, 'limit' => 50]);
+        $q = trim((string) $req->q);
 
-        $list = $res->successful() ? ($res->json('data') ?? []) : [];
-        return view('admin.berita.index', ['list' => $list, 'q' => $q]);
+        $list = Berita::when($q, function ($w) use ($q) {
+                    $w->where('judul', 'like', "%{$q}%")
+                      ->orWhere('isi', 'like', "%{$q}%");
+                })
+                ->latest()
+                ->paginate(20); // atau ->limit(50)->get()
+
+        return view('admin.berita.index', compact('list', 'q'));
     }
 
     public function create()
@@ -33,91 +31,81 @@ class BeritaController extends Controller
 
     public function store(Request $req)
     {
-        $req->validate([
+        $data = $req->validate([
             'judul'        => 'required|string|max:200',
             'isi'          => 'required|string',
-            'tanggal_post' => 'required|date',
-            'gambar'       => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'tanggal_post' => 'nullable|date',
+            'status'       => 'nullable|in:draft,published',
+            'gambar'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        $tanggal = date('Y-m-d', strtotime($req->tanggal_post));
+        $row = new Berita();
+        $row->judul = $data['judul'];
+        $row->slug  = Str::slug($data['judul']).'-'.Str::random(4);
+        $row->isi   = $data['isi'];
+        $row->status = $data['status'] ?? 'published';
+        $row->published_at = $data['tanggal_post'] ?? now();
 
-        $http = Http::asMultipart()->acceptJson()->timeout(30);
         if ($req->hasFile('gambar')) {
-            $f = $req->file('gambar');
-            $http = $http->attach('gambar', file_get_contents($f->getRealPath()), $f->getClientOriginalName());
+            $row->cover = $req->file('gambar')->store('berita', 'public');
         }
 
-        $payload = [
-            'judul'        => $req->judul,
-            'isi'          => $req->isi,
-            'tanggal_post' => $tanggal,
-            'slug'         => Str::slug($req->judul) . '-' . Str::random(6),
-        ];
-
-        $res = $http->post("{$this->api}/berita", $payload);
-
-        if (!$res->successful()) {
-            $msg = $res->json('message') ?? $res->json('error') ?? 'Gagal simpan';
-            return back()->withErrors($msg)->withInput();
-        }
+        $row->save();
 
         return redirect()->route('admin.berita.index')->with('ok', 'Berita dibuat');
     }
 
-    public function edit($id)
+    public function edit(Berita $berita)
     {
-        $res = Http::acceptJson()->timeout(20)->get("{$this->api}/berita/{$id}");
-        abort_unless($res->successful(), 404);
-        $row = $res->json('data');
-
-        return view('admin.berita.edit', compact('row'));
+        return view('admin.berita.edit', compact('berita'));
     }
 
-    public function update(Request $req, $id)
+    public function update(Request $req, Berita $berita)
     {
-        $req->validate([
+        $data = $req->validate([
             'judul'        => 'required|string|max:200',
             'isi'          => 'required|string',
-            'tanggal_post' => 'required|date',
+            'tanggal_post' => 'nullable|date',
+            'status'       => 'nullable|in:draft,published',
         ]);
 
-        $payload = [
-            'judul'        => $req->judul,
-            'isi'          => $req->isi,
-            'tanggal_post' => date('Y-m-d', strtotime($req->tanggal_post)),
-        ];
+        $berita->fill([
+            'judul'        => $data['judul'],
+            'isi'          => $data['isi'],
+            'status'       => $data['status'] ?? $berita->status,
+            'published_at' => $data['tanggal_post'] ?? $berita->published_at,
+        ]);
 
-        $res = Http::acceptJson()->timeout(20)->put("{$this->api}/berita/{$id}", $payload);
-
-        if (!$res->successful()) {
-            $msg = $res->json('message') ?? $res->json('error') ?? 'Gagal update';
-            return back()->withErrors($msg);
+        if ($berita->isDirty('judul')) {
+            $berita->slug = Str::slug($data['judul']).'-'.Str::random(4);
         }
+
+        $berita->save();
 
         return redirect()->route('admin.berita.index')->with('ok', 'Berita diupdate');
     }
 
-    public function updateImage(Request $req, $id)
+    public function updateImage(Request $req, Berita $berita)
     {
         $req->validate(['gambar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048']);
 
-        $f = $req->file('gambar');
-        $res = Http::asMultipart()->acceptJson()->timeout(30)
-                ->attach('gambar', file_get_contents($f->getRealPath()), $f->getClientOriginalName())
-                ->post("{$this->api}/berita/{$id}/gambar");
-
-        if (!$res->successful()) {
-            $msg = $res->json('message') ?? $res->json('error') ?? 'Gagal ganti gambar';
-            return back()->withErrors($msg);
+        if ($berita->cover) {
+            Storage::disk('public')->delete($berita->cover);
         }
+
+        $berita->cover = $req->file('gambar')->store('berita', 'public');
+        $berita->save();
 
         return back()->with('ok', 'Gambar diganti');
     }
 
-    public function destroy($id)
+    public function destroy(Berita $berita)
     {
-        Http::timeout(15)->delete("{$this->api}/berita/{$id}");
+        if ($berita->cover) {
+            Storage::disk('public')->delete($berita->cover);
+        }
+        $berita->delete();
+
         return back()->with('ok', 'Berita dihapus');
     }
 }
