@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
 
 class BeritaController extends Controller
@@ -12,17 +13,17 @@ class BeritaController extends Controller
 
     public function __construct()
     {
-        $this->api = rtrim(env('API_BASE'), '/');
+        $this->api = rtrim((string) env('API_BASE'), '/');
     }
 
     public function index(Request $req)
     {
         $q   = $req->query('q');
-        $res = Http::acceptJson()->get("{$this->api}/berita", ['q' => $q, 'limit' => 50]);
+        $res = Http::acceptJson()->timeout(20)
+                ->get("{$this->api}/berita", ['q' => $q, 'limit' => 50]);
+
         $list = $res->successful() ? ($res->json('data') ?? []) : [];
-
         return view('admin.berita.index', ['list' => $list, 'q' => $q]);
-
     }
 
     public function create()
@@ -33,25 +34,32 @@ class BeritaController extends Controller
     public function store(Request $req)
     {
         $req->validate([
-            'judul'         => 'required|string|max:200',
-            'isi'           => 'required|string',
-            'tanggal_post'  => 'required|date',
-            'gambar'        => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'judul'        => 'required|string|max:200',
+            'isi'          => 'required|string',
+            'tanggal_post' => 'required|date',
+            'gambar'       => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        // contoh upload multipart (sesuaikan dgn backend-mu)
-        $res = Http::attach(
-                    'gambar',
-                    file_get_contents($req->file('gambar')->getRealPath()),
-                    $req->file('gambar')->getClientOriginalName()
-                )->asMultipart()->post("{$this->api}/berita", [
-                    'judul'        => $req->judul,
-                    'isi'          => $req->isi,
-                    'tanggal_post' => $req->tanggal_post,
-                ]);
+        $tanggal = date('Y-m-d', strtotime($req->tanggal_post));
+
+        $http = Http::asMultipart()->acceptJson()->timeout(30);
+        if ($req->hasFile('gambar')) {
+            $f = $req->file('gambar');
+            $http = $http->attach('gambar', file_get_contents($f->getRealPath()), $f->getClientOriginalName());
+        }
+
+        $payload = [
+            'judul'        => $req->judul,
+            'isi'          => $req->isi,
+            'tanggal_post' => $tanggal,
+            'slug'         => Str::slug($req->judul) . '-' . Str::random(6),
+        ];
+
+        $res = $http->post("{$this->api}/berita", $payload);
 
         if (!$res->successful()) {
-            return back()->withErrors($res->json('error') ?? 'Gagal simpan')->withInput();
+            $msg = $res->json('message') ?? $res->json('error') ?? 'Gagal simpan';
+            return back()->withErrors($msg)->withInput();
         }
 
         return redirect()->route('admin.berita.index')->with('ok', 'Berita dibuat');
@@ -59,8 +67,9 @@ class BeritaController extends Controller
 
     public function edit($id)
     {
-        $row = Http::acceptJson()->get("{$this->api}/berita/{$id}")->json('data');
-        abort_unless($row, 404);
+        $res = Http::acceptJson()->timeout(20)->get("{$this->api}/berita/{$id}");
+        abort_unless($res->successful(), 404);
+        $row = $res->json('data');
 
         return view('admin.berita.edit', compact('row'));
     }
@@ -73,10 +82,17 @@ class BeritaController extends Controller
             'tanggal_post' => 'required|date',
         ]);
 
-        $res = Http::acceptJson()->put("{$this->api}/berita/{$id}", $req->only('judul','isi','tanggal_post'));
+        $payload = [
+            'judul'        => $req->judul,
+            'isi'          => $req->isi,
+            'tanggal_post' => date('Y-m-d', strtotime($req->tanggal_post)),
+        ];
+
+        $res = Http::acceptJson()->timeout(20)->put("{$this->api}/berita/{$id}", $payload);
 
         if (!$res->successful()) {
-            return back()->withErrors($res->json('error') ?? 'Gagal update');
+            $msg = $res->json('message') ?? $res->json('error') ?? 'Gagal update';
+            return back()->withErrors($msg);
         }
 
         return redirect()->route('admin.berita.index')->with('ok', 'Berita diupdate');
@@ -84,16 +100,16 @@ class BeritaController extends Controller
 
     public function updateImage(Request $req, $id)
     {
-        $req->validate(['gambar'=>'required|image|mimes:jpg,jpeg,png,webp|max:2048']);
+        $req->validate(['gambar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048']);
 
-        $res = Http::attach(
-                    'gambar',
-                    file_get_contents($req->file('gambar')->getRealPath()),
-                    $req->file('gambar')->getClientOriginalName()
-               )->post("{$this->api}/berita/{$id}/gambar");
+        $f = $req->file('gambar');
+        $res = Http::asMultipart()->acceptJson()->timeout(30)
+                ->attach('gambar', file_get_contents($f->getRealPath()), $f->getClientOriginalName())
+                ->post("{$this->api}/berita/{$id}/gambar");
 
         if (!$res->successful()) {
-            return back()->withErrors($res->json('error') ?? 'Gagal ganti gambar');
+            $msg = $res->json('message') ?? $res->json('error') ?? 'Gagal ganti gambar';
+            return back()->withErrors($msg);
         }
 
         return back()->with('ok', 'Gambar diganti');
@@ -101,7 +117,7 @@ class BeritaController extends Controller
 
     public function destroy($id)
     {
-        Http::delete("{$this->api}/berita/{$id}");
+        Http::timeout(15)->delete("{$this->api}/berita/{$id}");
         return back()->with('ok', 'Berita dihapus');
     }
 }

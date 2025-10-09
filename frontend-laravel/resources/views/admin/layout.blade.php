@@ -51,7 +51,6 @@
 
       {{-- Menu desktop --}}
       <nav class="hidden md:flex items-center gap-6 text-[15px] font-semibold">
-
         @foreach ($menu as $it)
           <a href="{{ $it['href'] }}"
              class="relative pb-1 hover:opacity-90
@@ -62,7 +61,7 @@
 
         <a href="{{ route('landing') }}" class="hover:opacity-90">↩ Kembali ke Situs</a>
 
-        {{-- User dropdown (Logout only) --}}
+        {{-- User dropdown --}}
         <div class="relative">
           <button @click="userMenu=!userMenu" class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">
             {{ auth()->user()->name ?? 'Admin' }}
@@ -75,7 +74,6 @@
             </form>
           </div>
         </div>
-
       </nav>
     </div>
   </div>
@@ -93,7 +91,8 @@
         </a>
       @endforeach
 
-      <a href="{{ route('landing') }}" class="block rounded-md px-4 py-2 my-1 hover:bg-white/10">↩ Kembali ke Situs</a>
+      <a href="{{ route('landing') }}" @click="open=false"
+         class="block rounded-md px-4 py-2 my-1 hover:bg-white/10">↩ Kembali ke Situs</a>
 
       <form method="POST" action="{{ route('logout') }}" class="px-2 py-2">
         @csrf

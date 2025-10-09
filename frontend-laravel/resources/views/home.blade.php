@@ -2,7 +2,7 @@
 @section('title','Beranda — Samsat Mataram')
 
 @section('content')
-<main class="min-h-screen">
+<main class="min-h-screen" x-data="homePage('{{ rtrim(env('API_BASE',''),'/') }}')" x-init="loadBerita()">
 
   {{-- HERO --}}
   <section class="relative h-[320px] sm:h-[420px] lg:h-[520px]">
@@ -107,11 +107,77 @@
     @endforeach
   </section>
 
-  {{-- BERITA --}}
+  {{-- BERITA (diambil dari API) --}}
   <section id="berita" class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 lg:pb-16">
-    <h2 class="font-extrabold mb-4 text-xl sm:text-2xl">Berita Terbaru</h2>
-    <p class="text-sm opacity-70">Nanti kita tarik dari API <code>/berita</code>.</p>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-extrabold text-xl sm:text-2xl">Berita Terbaru</h2>
+      <a href="{{ route('berita.index') }}" class="text-sm sm:text-base underline hover:opacity-80">Lihat semua</a>
+    </div>
+
+    {{-- state/error --}}
+    <template x-if="error">
+      <div class="text-red-600 text-sm mb-3" x-text="error"></div>
+    </template>
+
+    {{-- loading skeleton --}}
+    <div x-show="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <template x-for="i in 3" :key="i">
+        <div class="animate-pulse rounded-xl border bg-white p-4">
+          <div class="h-40 w-full bg-gray-200 rounded"></div>
+          <div class="h-4 bg-gray-200 rounded mt-3 w-3/4"></div>
+          <div class="h-3 bg-gray-200 rounded mt-2 w-1/2"></div>
+        </div>
+      </template>
+    </div>
+
+    {{-- list berita --}}
+    <div x-show="!loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <template x-for="b in berita" :key="b.id">
+        <article class="rounded-xl border bg-white shadow overflow-hidden">
+          <img :src="img(b)" alt="" class="w-full h-44 object-cover">
+          <div class="p-4">
+            <h3 class="font-bold line-clamp-2" x-text="b.judul"></h3>
+            <div class="text-xs opacity-70 mt-1" x-text="formatDate(b.tanggal_post)"></div>
+            <a :href="`{{ route('berita.index') }}#id-${'${'}b.id}`" class="mt-3 inline-block text-sm underline">Baca</a>
+          </div>
+        </article>
+      </template>
+
+      <template x-if="berita.length===0 && !loading && !error">
+        <div class="text-sm opacity-70">Belum ada berita.</div>
+      </template>
+    </div>
   </section>
 
 </main>
+
+{{-- Alpine helpers --}}
+<script>
+function homePage(API_BASE){
+  return {
+    berita: [],
+    loading: false,
+    error: '',
+    async loadBerita(){
+      if(!API_BASE){ this.error='API_BASE belum di-set.'; return; }
+      this.loading = true; this.error = '';
+      try{
+        const r = await fetch(`${API_BASE}/berita?limit=6`);
+        const j = await r.json();
+        if(!r.ok || !j.ok){ throw new Error(j.error || `HTTP ${r.status}`); }
+        this.berita = (j.data || []).slice(0,6);
+      }catch(e){ this.error = 'Gagal mengambil berita.'; console.error(e); }
+      finally{ this.loading = false; }
+    },
+    img(b){
+      return (b.gambar_url || '').startsWith('/') ? `${API_BASE}${b.gambar_url}` : (b.gambar_url || '{{ asset('images/hero.jpg') }}');
+    },
+    formatDate(s){
+      if(!s) return '';
+      const d = new Date(s);
+      return isNaN(d) ? s : d.toLocaleDateString('id-ID', {year:'numeric',month:'long',day:'numeric'});
+    }
+  }
+}
+</script>
 @endsection

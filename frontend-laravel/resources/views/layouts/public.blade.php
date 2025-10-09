@@ -17,136 +17,82 @@
 
   <style>
     html,body{font-family:"Poppins",system-ui,Arial,Helvetica,sans-serif}
-    /* Sembunyikan elemen sampai Alpine siap */
     [x-cloak]{ display:none !important; }
   </style>
 </head>
 <body class="text-gray-800 bg-white">
 
   {{-- NAVBAR --}}
-<header class="bg-[#0b5ea8] text-white sticky top-0 z-40 shadow" x-data="{open:false}">
-  <div class="max-w-[1100px] mx-auto px-4">
+  <header class="bg-[#0b5ea8] text-white sticky top-0 z-40 shadow" x-data="{open:false}">
+    <div class="max-w-[1100px] mx-auto px-4">
 
-    @php
-      $menu = [
-        ['label' => 'Beranda',   'route' => 'landing',   'href' => route('landing')],
-        ['label' => 'Pengaduan', 'route' => 'pengaduan', 'href' => route('pengaduan')],
-        ['label' => 'Staf',      'route' => 'staf',      'href' => route('staf')],
-        ['label' => 'Berita',    'route' => 'berita',    'href' => route('berita')],
-        ['label' => 'Contact',   'route' => 'contact',   'href' => route('contact')],
-        ['label' => 'Sop',       'route' => 'sop',       'href' => route('sop')],
-      ];
-      $isActive = fn($item) => $item['route'] ? request()->routeIs($item['route']) : false;
-    @endphp
+      @php
+        $menu = [
+          ['label' => 'Beranda',   'route' => 'landing',   'href' => route('landing')],
+          ['label' => 'Pengaduan', 'route' => 'pengaduan', 'href' => route('pengaduan')],
+          ['label' => 'Staf',      'route' => 'staf',      'href' => route('staf')],
+          ['label' => 'Berita',    'route' => 'berita',    'href' => route('berita.index')],
+          ['label' => 'Contact',   'route' => 'contact',   'href' => route('contact')],
+          ['label' => 'Sop',       'route' => 'sop',       'href' => route('sop')],
+        ];
+        $isActive = fn($item) => $item['route'] ? request()->routeIs($item['route']) : false;
+      @endphp
 
-    <div class="h-14 flex items-center justify-between">
-      {{-- Logo --}}
-      <div class="flex items-center gap-3">
-        <img src="{{ asset('images/logo.png') }}" class="h-8" alt="Logo">
-        <div class="text-sm leading-tight">
-          <div class="font-bold tracking-wide">BAPPENDA NTB</div>
-          <div class="text-[10px] opacity-80">Kuat & Amanah</div>
+      <div class="h-14 flex items-center justify-between">
+        {{-- Logo --}}
+        <div class="flex items-center gap-3">
+          <img src="{{ asset('images/logo.png') }}" class="h-8" alt="Logo">
+          <div class="text-sm leading-tight">
+            <div class="font-bold tracking-wide">BAPPENDA NTB</div>
+            <div class="text-[10px] opacity-80">Kuat & Amanah</div>
+          </div>
         </div>
+
+        {{-- Toggle mobile --}}
+        <button
+          class="block md:hidden text-2xl focus:outline-none"
+          @click="open = !open"
+          @keydown.escape.window="open=false"
+          :aria-expanded="open.toString()"
+          aria-label="Toggle Menu">
+          <span x-show="!open">☰</span>
+          <span x-cloak x-show="open">✕</span>
+        </button>
+
+        {{-- Menu desktop --}}
+        <nav class="hidden md:flex items-center gap-6 text-[15px] font-semibold">
+          @foreach ($menu as $it)
+            <a href="{{ $it['href'] }}"
+               class="relative pb-1 hover:opacity-90
+                      {{ $isActive($it)
+                          ? 'after:absolute after:left-0 after:-bottom-1 after:h-[3px] after:w-full after:bg-yellow-300'
+                          : '' }}">
+              {{ $it['label'] }}
+            </a>
+          @endforeach
+        </nav>
       </div>
+    </div>
 
-      {{-- Toggle mobile --}}
-      <button
-        class="block md:hidden text-2xl focus:outline-none"
-        @click="open = !open"
-        @keydown.escape.window="open=false"
-        :aria-expanded="open.toString()"
-        aria-label="Toggle Menu">
-        <span x-show="!open">☰</span>
-        <span x-cloak x-show="open">✕</span>
-      </button>
-
-      {{-- Menu desktop (kiri) --}}
-      <nav class="hidden md:flex items-center gap-6 text-[15px] font-semibold">
+    {{-- Menu mobile --}}
+    <div x-cloak x-show="open" x-transition
+         @resize.window="if (window.innerWidth >= 768) open = false"
+         class="md:hidden fixed inset-x-0 top-14 bottom-0 z-40 bg-[#0b5ea8] text-white shadow-lg overflow-y-auto">
+      <nav class="flex flex-col py-2 text-[15px] font-semibold">
         @foreach ($menu as $it)
-          <a href="{{ $it['href'] }}"
-             class="relative pb-1 hover:opacity-90
+          <a href="{{ $it['href'] }}" @click="open=false"
+             class="relative pl-4 pr-3 py-2 mx-2 my-0.5 rounded-md hover:bg-white/10
                     {{ $isActive($it)
-                        ? 'after:absolute after:left-0 after:-bottom-1 after:h-[3px] after:w-full after:bg-yellow-300'
+                        ? 'bg-white/10 before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] before:bg-yellow-300'
                         : '' }}">
             {{ $it['label'] }}
           </a>
         @endforeach
       </nav>
-
-      {{-- Aksi kanan (login/logout/admin) desktop --}}
-      <div class="hidden md:flex items-center gap-3">
-        @auth
-          @if(auth()->user()->is_admin)
-            <a href="{{ route('admin.dashboard') }}"
-               class="relative pb-1 hover:opacity-90">
-              Admin
-            </a>
-          @endif
-
-          <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit"
-              class="px-3 py-1.5 rounded-md border border-white/30 hover:bg-white/10">
-              Logout
-            </button>
-          </form>
-        @endauth
-
-        @guest
-          <a href="{{ route('login') }}"
-             class="px-3 py-1.5 rounded-md border border-white/30 hover:bg-white/10">
-            Login Admin
-          </a>
-        @endguest
-      </div>
     </div>
-  </div>
+  </header>
 
-  {{-- Menu mobile (overlay) --}}
-  <div x-cloak x-show="open" x-transition
-       @resize.window="if (window.innerWidth >= 768) open = false"
-       class="md:hidden fixed inset-x-0 top-14 bottom-0 z-40 bg-[#0b5ea8] text-white shadow-lg overflow-y-auto">
-    <nav class="flex flex-col py-2 text-[15px] font-semibold">
-      @foreach ($menu as $it)
-        <a href="{{ $it['href'] }}" @click="open=false"
-           class="relative pl-4 pr-3 py-2 mx-2 my-0.5 rounded-md hover:bg-white/10
-                  {{ $isActive($it)
-                      ? 'bg-white/10 before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] before:bg-yellow-300'
-                      : '' }}">
-          {{ $it['label'] }}
-        </a>
-      @endforeach
-
-      {{-- Aksi kanan: mobile --}}
-      @auth
-        @if(auth()->user()->is_admin)
-          <a href="{{ route('admin.dashboard') }}" @click="open=false"
-             class="pl-4 pr-3 py-2 mx-2 my-0.5 rounded-md hover:bg-white/10">
-            Admin
-          </a>
-        @endif
-        <form method="POST" action="{{ route('logout') }}" class="mx-2 my-0.5">
-          @csrf
-          <button type="submit"
-                  class="w-full text-left pl-4 pr-3 py-2 rounded-md hover:bg-white/10">
-            Logout
-          </button>
-        </form>
-      @endauth
-
-      @guest
-        <a href="{{ route('login') }}" @click="open=false"
-           class="pl-4 pr-3 py-2 mx-2 my-0.5 rounded-md hover:bg-white/10">
-          Login Admin
-        </a>
-      @endguest
-    </nav>
-  </div>
-</header>
-
-
-
-  {{-- KONTEN HALAMAN --}}
+  {{-- KONTEN --}}
   @yield('content')
 
   {{-- FOOTER --}}
@@ -165,11 +111,14 @@
         <div>(0370) 631230</div>
       </div>
       <div class="space-y-3">
-        <a class="underline" href="#">E-samsat</a><br>
+        <a class="underline" href="#">E-samsat</a>
       </div>
       <div class="space-y-1">
-        <a class="underline" href="#">Simaskot</a><br>
+        <a class="underline" href="#">Simaskot</a>
       </div>
+    </div>
+    <div class="text-center text-xs py-3 opacity-80 border-t border-white/10">
+      © {{ now()->year }} Samsat Mataram — Bappenda NTB
     </div>
   </footer>
 </body>
